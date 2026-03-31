@@ -1,0 +1,13 @@
+<!--/*
+  headlessArticleDetail.html
+  Renders <aem-article-detail> custom element for a specific Content Fragment.
+*/-->
+<sly data-sly-use.clientLib="/libs/granite/sightly/templates/clientlib.html"/>
+
+<div data-sly-call="${clientLib.js @ categories='aem-headless-demo.headless-wc'}"></div>
+
+<aem-article-detail
+    aem-host="${properties.aemHost @ context='attribute'}"
+    graphql-endpoint="${properties.graphqlEndpoint @ context='attribute'}"
+    path="${properties.cfPath @ context='attribute'}">
+</aem-article-detail>

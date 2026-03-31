@@ -1,0 +1,21 @@
+{
+  "alloworigin": [ "http://localhost:3000" ],
+  "alloworiginregexp": [],
+  "allowedpaths": [
+    "/api/graphql",
+    "/content/_cq_graphql/.*",
+    "/content/dam/.*",
+    "/model.json",
+    "/content/.*\\.model\\.json",
+    "/graphql/execute.json/.*"
+  ],
+  "allowedheaders": [
+    "Authorization",
+    "Content-Type",
+    "x-adobe-accept-experimental"
+  ],
+  "allowedmethods": [ "GET", "HEAD", "POST" ],
+  "maxage": 86400,
+  "supportscredentials": true,
+  "exposedheaders": [ "" ]
+}
