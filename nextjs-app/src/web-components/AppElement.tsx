@@ -38,10 +38,8 @@ function ArticleListRoute({ aemHost }: { aemHost: string; graphqlEndpoint: strin
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
-    const auth = "Basic " + btoa("admin:admin");
-    fetch(`${aemHost}/graphql/execute.json/aem-headless-demo/all-articles`, {
-      headers: { Authorization: auth },
-    })
+    const baseUrl = aemHost || "";
+    fetch(`${baseUrl}/graphql/execute.json/aem-headless-demo/all-articles`)
       .then((r) => r.json())
       .then((j) => setArticles(j?.data?.articleList?.items ?? []))
       .catch((e: Error) => setError(e.message))
@@ -66,7 +64,7 @@ function ArticleListRoute({ aemHost }: { aemHost: string; graphqlEndpoint: strin
 function ArticleDetailRoute({
   path,
   aemHost,
-  graphqlEndpoint,
+  graphqlEndpoint: _graphqlEndpoint,
 }: {
   path: string;
   aemHost: string;
@@ -76,10 +74,9 @@ function ArticleDetailRoute({
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    const auth = "Basic " + btoa("admin:admin");
+    const baseUrl = aemHost || "";
     fetch(
-      `${aemHost}/graphql/execute.json/aem-headless-demo/article-by-path?_path=${encodeURIComponent(path)}`,
-      { headers: { Authorization: auth } }
+      `${baseUrl}/graphql/execute.json/aem-headless-demo/article-by-path?_path=${encodeURIComponent(path)}`
     )
       .then((r) => r.json())
       .then((j) => setArticle(j?.data?.articleByPath?.item ?? null))
@@ -131,7 +128,7 @@ export class AppElement extends HTMLElement {
     this.root.render(
       <React.StrictMode>
         <HashRouter
-          aemHost={getAttr(this, "aem-host", "http://localhost:4502")}
+          aemHost={getAttr(this, "aem-host", "")}
           graphqlEndpoint={getAttr(
             this,
             "graphql-endpoint",

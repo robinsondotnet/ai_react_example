@@ -11,8 +11,11 @@
     "build:cdn": "BUILD_TARGET=cdn next build",
     "build:wc": "vite build --config vite.wc.config.ts",
     "dev:wc": "vite build --config vite.wc.config.ts --watch",
+    "explore": "vite build --config vite.wc.config.ts --outDir public/dist-wc && next dev",
     "start": "next start",
-    "lint": "eslint"
+    "lint": "eslint",
+    "test": "vitest run",
+    "test:watch": "vitest"
   },
   "dependencies": {
     "@adobe/aem-headless-client-js": "^4.0.0",
@@ -22,15 +25,19 @@
   },
   "devDependencies": {
     "@tailwindcss/postcss": "^4",
+    "@testing-library/jest-dom": "^6.9.1",
+    "@testing-library/react": "^16.3.2",
     "@types/node": "^20",
     "@types/react": "^19",
     "@types/react-dom": "^19",
     "@vitejs/plugin-react": "^6.0.1",
     "eslint": "^9",
     "eslint-config-next": "16.2.1",
+    "jsdom": "^29.0.1",
     "rolldown": "^1.0.0-rc.12",
     "tailwindcss": "^4",
     "typescript": "^5",
-    "vite": "^8.0.3"
+    "vite": "^8.0.3",
+    "vitest": "^4.1.2"
   }
 }

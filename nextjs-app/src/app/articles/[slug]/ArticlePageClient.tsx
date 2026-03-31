@@ -1,12 +1,10 @@
 "use client";
 
-import { useEffect, useState, useCallback } from "react";
+import { useEffect, useState } from "react";
 import { useParams } from "next/navigation";
 import { ArticleDetail } from "@/components/ArticleDetail";
 import { AEMErrorAlert } from "@/components/AEMErrorAlert";
-import { toAEMError, httpStatusToError } from "@/lib/aem/errors";
-import type { ArticleModel } from "@/lib/aem/types";
-import type { AEMRequestError } from "@/lib/aem/errors";
+import type { ArticleModel } from "@/lib/content";
 import Link from "next/link";
 
 export default function ArticlePageClient() {
@@ -15,29 +13,36 @@ export default function ArticlePageClient() {
 
   const [article, setArticle] = useState<ArticleModel | null>(null);
   const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<AEMRequestError | null>(null);
-
-  const fetchArticle = useCallback(() => {
-    if (!path || path === "_") return;
-    const aemHost = process.env.NEXT_PUBLIC_AEM_HOST ?? "http://localhost:4502";
-    const url = `${aemHost}/graphql/execute.json/aem-headless-demo/article-by-path?_path=${encodeURIComponent(path)}`;
-
-    setLoading(true);
-    setError(null);
-
-    fetch(url)
-      .then((r) => {
-        if (!r.ok) throw httpStatusToError(r.status, url);
-        return r.json();
-      })
-      .then((j) => setArticle(j?.data?.articleByPath?.item ?? null))
-      .catch((e: unknown) => setError(toAEMError(e, url)))
-      .finally(() => setLoading(false));
-  }, [path]);
+  const [error, setError] = useState<Error | null>(null);
+  const [retryCount, setRetryCount] = useState(0);
 
   useEffect(() => {
-    fetchArticle();
-  }, [fetchArticle]);
+    if (!path || path === "_") return;
+    const url = `/api/articles/${encodeURIComponent(path)}`;
+    const controller = new AbortController();
+
+    fetch(url, { signal: controller.signal })
+      .then((r) => {
+        if (!r.ok) throw new Error(`Request failed: ${r.status} ${r.statusText}`);
+        return r.json();
+      })
+      .then((j: { article: ArticleModel }) => setArticle(j.article ?? null))
+      .catch((e: unknown) => {
+        if (!controller.signal.aborted)
+          setError(e instanceof Error ? e : new Error(String(e)));
+      })
+      .finally(() => {
+        if (!controller.signal.aborted) setLoading(false);
+      });
+
+    return () => controller.abort();
+  }, [path, retryCount]);
+
+  const handleRetry = () => {
+    setLoading(true);
+    setError(null);
+    setRetryCount((c) => c + 1);
+  };
 
   return (
     <main>
@@ -53,7 +58,7 @@ export default function ArticlePageClient() {
 
       {error && (
         <div className="max-w-3xl mx-auto px-4 pt-4">
-          <AEMErrorAlert error={error} onRetry={fetchArticle} />
+          <AEMErrorAlert error={error} onRetry={handleRetry} />
         </div>
       )}
 

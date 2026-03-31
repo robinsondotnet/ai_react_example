@@ -1,21 +1,19 @@
 import Link from "next/link";
-import { getAllArticles } from "@/lib/aem/graphql";
+import { getAllArticles } from "@/lib/content";
 import { ArticleCard } from "@/components/ArticleCard";
 import { AEMErrorAlert } from "@/components/AEMErrorAlert";
-import type { ArticleModel } from "@/lib/aem/types";
-import type { AEMRequestError } from "@/lib/aem/errors";
+import type { ArticleModel } from "@/lib/content";
 
 export const revalidate = 60;
 
 export default async function ArticlesPage() {
   let articles: ArticleModel[] = [];
-  let error: AEMRequestError | null = null;
+  let error: Error | null = null;
 
   try {
     articles = await getAllArticles();
   } catch (e) {
-    const { toAEMError } = await import("@/lib/aem/errors");
-    error = toAEMError(e);
+    error = e instanceof Error ? e : new Error(String(e));
   }
 
   return (
