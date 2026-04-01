@@ -21,7 +21,7 @@ export async function getContentModel<T = unknown>(contentPath: string): Promise
     const res = await fetch(url, {
       headers: authHeaders(),
       next: { revalidate: 60 },
-    });
+    } as RequestInit & { next?: { revalidate?: number | false } });
     if (!res.ok) throw httpStatusToError(res.status, url);
     return res.json() as Promise<T>;
   } catch (e) {

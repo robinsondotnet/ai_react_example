@@ -17,18 +17,12 @@ function ArticleDetailWidget({ path, aemHost }: Props) {
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    if (!path) {
-      setError("No Content Fragment path provided (set the 'path' attribute).");
-      setLoading(false);
-      return;
-    }
+    if (!path) return;
 
-    const endpoint = `${aemHost}/graphql/execute.json/aem-headless-demo/article-by-path`;
-    const auth = "Basic " + btoa("admin:admin");
+    const baseUrl = aemHost || "";
+    const endpoint = `${baseUrl}/graphql/execute.json/aem-headless-demo/article-by-path`;
 
-    fetch(`${endpoint}?_path=${encodeURIComponent(path)}`, {
-      headers: { Authorization: auth },
-    })
+    fetch(`${endpoint}?_path=${encodeURIComponent(path)}`)
       .then((r) => {
         if (!r.ok) throw new Error(`HTTP ${r.status}`);
         return r.json();
@@ -39,6 +33,15 @@ function ArticleDetailWidget({ path, aemHost }: Props) {
       .catch((e: Error) => setError(e.message))
       .finally(() => setLoading(false));
   }, [path, aemHost]);
+
+  // Guard missing path in render — avoids synchronous setState in effect
+  if (!path) {
+    return (
+      <div className="p-4 rounded-lg border border-red-200 bg-red-50 text-red-700 text-sm">
+        No Content Fragment path provided (set the &apos;path&apos; attribute).
+      </div>
+    );
+  }
 
   if (loading) return <div className="p-6 text-gray-500 text-sm">Loading…</div>;
 
@@ -84,7 +87,7 @@ export class ArticleDetailElement extends HTMLElement {
       <React.StrictMode>
         <ArticleDetailWidget
           path={getAttr(this, "path")}
-          aemHost={getAttr(this, "aem-host", "http://localhost:4502")}
+          aemHost={getAttr(this, "aem-host", "")}
           graphqlEndpoint={getAttr(
             this,
             "graphql-endpoint",

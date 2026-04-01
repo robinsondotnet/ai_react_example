@@ -7,11 +7,15 @@ export default defineConfig({
   resolve: {
     alias: {
       "@": resolve(__dirname, "src"),
+      // Replace next/link with a plain <a> stub — prevents Next.js router
+      // code (and its process.env.__NEXT_* references) from entering the bundle.
+      "next/link": resolve(__dirname, "src/web-components/stubs/next-link.tsx"),
     },
   },
   define: {
-    // Required for React in production IIFE bundle
+    // Specific replacements first, then catch-all for any other process.env.*
     "process.env.NODE_ENV": JSON.stringify("production"),
+    "process.env": "{}",
   },
   build: {
     lib: {
@@ -20,7 +24,7 @@ export default defineConfig({
       formats: ["iife"],
       fileName: () => "web-components.js",
     },
-    outDir: "dist-wc",
+    outDir: "public/dist-wc",
     emptyOutDir: true,
     rollupOptions: {
       // Bundle everything — no externals; this must be self-contained on CDN

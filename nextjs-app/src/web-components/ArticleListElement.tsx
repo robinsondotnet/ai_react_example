@@ -1,4 +1,4 @@
-import React, { useCallback, useEffect, useState } from "react";
+import React, { useEffect, useState } from "react";
 import { createRoot, type Root } from "react-dom/client";
 import { createShadowRoot, getAttr } from "./utils";
 import { ArticleCard } from "@/components/ArticleCard";
@@ -13,19 +13,20 @@ interface Props {
   graphqlEndpoint: string;
 }
 
-function ArticleListWidget({ aemHost, graphqlEndpoint }: Props) {
+function ArticleListWidget({
+  aemHost,
+  graphqlEndpoint: _graphqlEndpoint,
+}: Props) {
   const [articles, setArticles] = useState<ArticleModel[]>([]);
   const [error, setError] = useState<AEMRequestError | null>(null);
   const [loading, setLoading] = useState(true);
+  const [retryCount, setRetryCount] = useState(0);
 
-  const fetchArticles = useCallback(() => {
-    const url = `${aemHost}/graphql/execute.json/aem-headless-demo/all-articles`;
-    const auth = "Basic " + btoa("admin:admin");
+  useEffect(() => {
+    const baseUrl = aemHost || "";
+    const url = `${baseUrl}/graphql/execute.json/aem-headless-demo/all-articles`;
 
-    setLoading(true);
-    setError(null);
-
-    fetch(url, { headers: { Authorization: auth } })
+    fetch(url)
       .then((r) => {
         if (!r.ok) throw httpStatusToError(r.status, url);
         return r.json();
@@ -33,9 +34,13 @@ function ArticleListWidget({ aemHost, graphqlEndpoint }: Props) {
       .then((json) => setArticles(json?.data?.articleList?.items ?? []))
       .catch((e: unknown) => setError(toAEMError(e, url)))
       .finally(() => setLoading(false));
-  }, [aemHost, graphqlEndpoint]);
+  }, [aemHost, retryCount]);
 
-  useEffect(() => { fetchArticles(); }, [fetchArticles]);
+  const handleRetry = () => {
+    setLoading(true);
+    setError(null);
+    setRetryCount((c) => c + 1);
+  };
 
   if (loading) {
     return (
@@ -48,7 +53,7 @@ function ArticleListWidget({ aemHost, graphqlEndpoint }: Props) {
   if (error) {
     return (
       <div className="p-4">
-        <AEMErrorAlert error={error} onRetry={fetchArticles} />
+        <AEMErrorAlert error={error} onRetry={handleRetry} />
       </div>
     );
   }
@@ -88,15 +93,14 @@ export class ArticleListElement extends HTMLElement {
     this.root.render(
       <React.StrictMode>
         <ArticleListWidget
-          aemHost={getAttr(this, "aem-host", "http://localhost:4502")}
+          aemHost={getAttr(this, "aem-host", "")}
           graphqlEndpoint={getAttr(
             this,
             "graphql-endpoint",
-            "/content/_cq_graphql/aem-headless-demo/endpoint.gql"
+            "/content/_cq_graphql/aem-headless-demo/endpoint.gql",
           )}
         />
-      </React.StrictMode>
+      </React.StrictMode>,
     );
   }
 }
-

@@ -14,25 +14,6 @@ const nextConfig: NextConfig = {
   images: {
     // Static export requires unoptimized images; CDN serves them as-is
     unoptimized: isCdnBuild,
-    remotePatterns: [
-      {
-        protocol: "http",
-        hostname: "localhost",
-        port: "4502",
-        pathname: "/content/dam/**",
-      },
-    ],
-  },
-
-  async rewrites() {
-    // Rewrites are not supported in static export mode
-    if (isCdnBuild) return [];
-    return [
-      {
-        source: "/aem-api/:path*",
-        destination: `${process.env.NEXT_PUBLIC_AEM_HOST}/:path*`,
-      },
-    ];
   },
 };
 

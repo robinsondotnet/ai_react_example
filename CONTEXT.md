@@ -1,252 +1,242 @@
 # AEM Headless + Next.js — CONTEXT.md
 
-> Última actualización: 2026-03-30  
-> Estado general: **Frontend 100% completo · Backend bloqueado por licencia AEM**
+> Last updated: 2026-07-10  
+> Status: **Fully runnable — no external services required · Mock content provider active**
 
 ---
 
-## 1. Árbol de Directorios
+## 1. Project Structure
 
 ```
 workspace/aem/
-├── CONTEXT.md                          ← este archivo
+├── CONTEXT.md                          ← this file
 │
-├── nextjs-app/                         ← Frontend Next.js 14
-│   ├── .env.example                    ← plantilla de variables (commitear)
-│   ├── .env.local                      ← variables locales (NO commitear)
-│   ├── .nvmrc                          ← Node 22
-│   ├── next.config.ts                  ← config Next.js + modo CDN
-│   ├── vite.wc.config.ts               ← config Vite para web components
-│   ├── tsconfig.json                   ← excluye src/web-components (Vite-only)
-│   ├── tsconfig.wc.json                ← tsconfig para build Vite
-│   ├── package.json                    ← engines: node >=22.12.0
-│   │
-│   ├── src/
-│   │   ├── app/                        ← Next.js App Router
-│   │   │   ├── layout.tsx
-│   │   │   ├── page.tsx                ← home
-│   │   │   ├── globals.css
-│   │   │   └── articles/
-│   │   │       ├── page.tsx            ← listado de artículos (GraphQL SSR)
-│   │   │       └── [slug]/
-│   │   │           ├── page.tsx        ← wrapper server (generateStaticParams)
-│   │   │           └── ArticlePageClient.tsx  ← detalle client-side fetch
-│   │   │
-│   │   ├── components/
-│   │   │   ├── ArticleCard.tsx
-│   │   │   └── ArticleDetail.tsx
-│   │   │
-│   │   ├── lib/aem/
-│   │   │   ├── types.ts                ← ArticleModel, respuestas GraphQL
-│   │   │   ├── aemHeadlessClient.ts    ← singleton AEMHeadless
-│   │   │   ├── graphql.ts              ← getAllArticles, getArticleByPath
-│   │   │   └── rest.ts                 ← fetchAEM, getContentModel
-│   │   │
-│   │   ├── types/
-│   │   │   ├── aem-headless-client-js.d.ts   ← tipos manuales del SDK Adobe
-│   │   │   └── css-inline.d.ts               ← declara *.css?inline para Vite
-│   │   │
-│   │   └── web-components/             ← Custom Elements para CDN
-│   │       ├── index.ts                ← registra los 3 custom elements
-│   │       ├── utils.ts                ← createShadowRoot, getAttr
-│   │       ├── styles.css              ← @import tailwindcss (Shadow DOM)
-│   │       ├── AppElement.tsx          ← <aem-headless-app> con hash router
-│   │       ├── ArticleListElement.tsx  ← <aem-article-list>
-│   │       └── ArticleDetailElement.tsx ← <aem-article-detail>
-│   │
-│   ├── dist-wc/
-│   │   └── web-components.js           ← IIFE bundle (267 KB · gzip 81 KB) ✅
-│   │
-│   └── out/                            ← static export CDN (npm run build:cdn) ✅
-│
-└── aem-headless-demo/                  ← Backend AEM Maven multi-módulo
-    ├── pom.xml                         ← root POM (groupId: com.aem.headless)
-    ├── core/                           ← Java OSGi bundle (Sling Models, Servlets)
-    ├── ui.apps/
-    │   └── .../apps/aem-headless-demo/
-    │       ├── clientlibs/
-    │       │   ├── clientlib-base/
-    │       │   ├── clientlib-site/
-    │       │   └── clientlib-headless-wc/  ← ✅ NUEVO
-    │       │       ├── .content.xml        ← categoría: aem-headless-demo.headless-wc
-    │       │       ├── js.txt
-    │       │       └── js/loader.js        ← inyecta bundle CDN idempotente
-    │       └── components/
-    │           ├── ... (WCM Core)
-    │           ├── headlessArticleList/    ← ✅ NUEVO
-    │           │   ├── .content.xml
-    │           │   ├── headlessArticleList.html
-    │           │   └── _cq_dialog/.content.xml
-    │           └── headlessArticleDetail/  ← ✅ NUEVO
-    │               ├── .content.xml
-    │               ├── headlessArticleDetail.html
-    │               └── _cq_dialog/.content.xml
-    ├── ui.config/
-    │   └── .../osgiconfig/
-    │       ├── config/
-    │       │   └── GraphQlEndpointImpl~aem-headless-demo.cfg.json
-    │       ├── config.author/
-    │       │   └── CORSPolicyImpl~headless.cfg.json  ← permite localhost:3000
-    │       └── config.publish/
-    │           └── CORSPolicyImpl~headless.cfg.json
-    ├── ui.content/                     ← asset de muestra (asset.jpg)
-    ├── dispatcher/                     ← config Apache Dispatcher
-    └── all/                            ← paquete agregador para deploy
+└── nextjs-app/                         ← Next.js 16 frontend (App Router, TypeScript, Tailwind 4)
+    ├── .env.example                    ← env variable template (committed)
+    ├── .env.local                      ← local overrides (NOT committed)
+    ├── .nvmrc                          ← Node 22
+    ├── next.config.ts                  ← Next.js config + CDN mode
+    ├── vite.wc.config.ts               ← Vite config for web components
+    ├── tsconfig.json                   ← excludes src/web-components (Vite-only)
+    ├── tsconfig.wc.json                ← tsconfig for Vite build
+    ├── package.json                    ← engines: node >=22.12.0
+    │
+    ├── src/
+    │   ├── app/                        ← Next.js App Router
+    │   │   ├── layout.tsx
+    │   │   ├── page.tsx                ← home
+    │   │   ├── globals.css
+    │   │   ├── articles/
+    │   │   │   ├── page.tsx            ← article list (reads from content provider)
+    │   │   │   └── [slug]/
+    │   │   │       ├── page.tsx        ← server wrapper (generateStaticParams)
+    │   │   │       └── ArticlePageClient.tsx  ← client-side detail fetch → /api/articles/[slug]
+    │   │   ├── api/
+    │   │   │   └── articles/
+    │   │   │       └── [slug]/
+    │   │   │           └── route.ts    ← article detail API (calls content provider)
+    │   │   └── graphql/
+    │   │       └── execute.json/
+    │   │           └── [...query]/
+    │   │               └── route.ts    ← mock AEM GraphQL persisted-query endpoint
+    │   │
+    │   ├── components/
+    │   │   ├── ArticleCard.tsx
+    │   │   └── ArticleDetail.tsx
+    │   │
+    │   ├── lib/
+    │   │   ├── content/                ← content provider abstraction (active)
+    │   │   │   ├── types.ts            ← re-exports ArticleModel (provider-agnostic)
+    │   │   │   ├── provider.ts         ← ContentProvider interface
+    │   │   │   ├── index.ts            ← selects provider via CONTENT_PROVIDER env var
+    │   │   │   ├── mock/
+    │   │   │   │   ├── data.ts         ← 5 hardcoded sample articles
+    │   │   │   │   └── index.ts        ← mock provider (no HTTP calls)
+    │   │   │   └── aem/
+    │   │   │       └── index.ts        ← AEM adapter (wraps lib/aem/graphql)
+    │   │   │
+    │   │   └── aem/                    ← AEM SDK adapter (dormant — preserved for reconnection)
+    │   │       ├── types.ts            ← ArticleModel, GraphQL response types
+    │   │       ├── aemHeadlessClient.ts ← AEMHeadless singleton
+    │   │       ├── graphql.ts          ← getAllArticles, getArticleByPath
+    │   │       └── rest.ts             ← fetchAEM, getContentModel
+    │   │
+    │   ├── types/
+    │   │   ├── aem-headless-client-js.d.ts   ← manual types for Adobe SDK
+    │   │   └── css-inline.d.ts               ← declares *.css?inline for Vite
+    │   │
+    │   └── web-components/             ← Custom Elements for CDN delivery
+    │       ├── index.ts                ← registers 3 custom elements
+    │       ├── utils.ts                ← createShadowRoot, getAttr
+    │       ├── styles.css              ← @import tailwindcss (Shadow DOM)
+    │       ├── AppElement.tsx          ← <aem-headless-app> with hash router
+    │       ├── ArticleListElement.tsx  ← <aem-article-list>
+    │       └── ArticleDetailElement.tsx ← <aem-article-detail>
+    │
+    ├── dist-wc/
+    │   └── web-components.js           ← IIFE bundle (Vite output)
+    │
+    └── out/                            ← static CDN export (npm run build:cdn)
 ```
 
 ---
 
-## 2. Módulos 100% Funcionales ✅
+## 2. Architecture Overview
 
-| Módulo | Comando de verificación | Resultado |
-|--------|------------------------|-----------|
-| **Web Components IIFE** | `npm run build:wc` | `dist-wc/web-components.js` 267 KB |
-| **Next.js static CDN export** | `npm run build:cdn` | `out/` — 6 páginas estáticas |
-| **Next.js dev server** | `npm run dev` | `http://localhost:3000` |
-| **TypeScript check** | `npx tsc --noEmit` | 0 errores |
-| **AEM ClientLib loader** | Deploy AEM → incluir categoría | `clientlib-headless-wc` |
-| **HTL headlessArticleList** | Deploy AEM → arrastrar en editor | `<aem-article-list>` |
-| **HTL headlessArticleDetail** | Deploy AEM → arrastrar en editor | `<aem-article-detail>` |
-| **OSGi CORS** | Deploy AEM | CORS activo en author + publish |
-| **GraphQL endpoint OSGi** | Deploy AEM | endpoint `/content/_cq_graphql/...` |
+### Content Provider Layer
 
-### Custom Elements registrados
+All app pages and API routes import exclusively from `@/lib/content` — never from `@/lib/aem` directly. The content provider is selected at startup via the `CONTENT_PROVIDER` environment variable.
 
-| Elemento | Atributos observados | Descripción |
-|----------|---------------------|-------------|
-| `<aem-headless-app>` | `aem-host`, `graphql-endpoint`, `base-path` | App completa con hash router |
-| `<aem-article-list>` | `aem-host`, `graphql-endpoint` | Lista de artículos |
-| `<aem-article-detail>` | `aem-host`, `graphql-endpoint`, `path` | Detalle de un CF |
+```
+App pages / API routes
+        │
+        ▼
+  src/lib/content/index.ts   ← selects provider
+        │
+   ┌────┴────┐
+   ▼         ▼
+ mock/     aem/
+(default)  (adapter wrapping src/lib/aem/)
+```
 
----
+### Mock API Routes (web components in standalone mode)
 
-## 3. Decisiones Técnicas
+Web components default to `aem-host=""` (relative URLs). When no AEM host is set, they call the Next.js mock routes which serve the same sample data as the mock content provider:
 
-### Node.js & Vite
-- **Node 22.22.2** (instalado via `nvm install 22`): requerido por Vite 8 + rolldown (`^20.19.0 || >=22.12.0`).
-- **Vite 8.0.3**: usa rolldown (bundler nativo en Rust) en lugar de rollup. Significativamente más rápido. Build WC: ~860ms.
-- **Problema resuelto con rolldown**: `@rolldown/binding-darwin-x64` es una dependencia opcional nativa. npm la omitía porque ejecutaba npm con Node 20.11.0 (del PATH) en vez de Node 22. Fix: `nvm use 22` antes de `npm install`, o ejecutar `~/.nvm/versions/node/v22.22.2/bin/node npm install`.
-- `.nvmrc = "22"` → `nvm use` activa automáticamente v22.22.2.
+```
+<aem-article-list> (aem-host="")
+        │  relative fetch
+        ▼
+/graphql/execute.json/[...query]/route.ts
+        │
+        ▼
+  ContentProvider (mock)
+```
 
-### Web Components con Shadow DOM
-- **Shadow DOM + Tailwind**: Tailwind 4 se importa como `styles.css?inline` (Vite) y se inyecta como `<style>` dentro del shadow root. Esto aísla estilos del host AEM.
-- **IIFE format**: no requiere módulo loader en la página AEM. Un único `<script>` es suficiente.
-- **Hash router en AppElement**: evita conflicto con el routing de AEM. URLs tipo `#/articles/path`.
+### Data Flow Summary
 
-### Next.js Static Export (CDN)
-- `BUILD_TARGET=cdn next build` activa `output: 'export'` en `next.config.ts`.
-- **Problema con Turbopack + `generateStaticParams([])`**: Turbopack (default en Next.js 16) trata un array vacío como "función ausente". Workaround: retornar `[{ slug: "_" }]` como placeholder — genera un shell estático que carga datos client-side.
-- **Server/Client split**: `[slug]/page.tsx` (server, exporta `generateStaticParams`) + `ArticlePageClient.tsx` (client, `"use client"`, fetch en `useEffect`). Requerido porque `generateStaticParams` no puede estar en un `"use client"` component.
-- `src/web-components/` excluido del `tsconfig.json` de Next.js (usa `*.css?inline` que es sintaxis Vite-only). Tiene su propio `tsconfig.wc.json`.
-
-### AEM Maven Archetype
-- **Archetype 50** con `includeGraphQL=y` y `aemVersion=cloud`.
-- `maven-archetype-plugin:3.4.1` falla en archetype 50 (Velocity intenta parsear binarios GIF). Fix: pinear a `3.2.1`.
-
-### Adobe AEM SDK
-- Requiere licencia de pago o trial de 30 días. Sin versión community.
-- Alternativa para dev sin licencia: mockear el endpoint GraphQL localmente.
+| Consumer | Import | Provider |
+|----------|--------|----------|
+| `app/articles/page.tsx` | `@/lib/content` | mock or AEM |
+| `app/api/articles/[slug]/route.ts` | `@/lib/content` | mock or AEM |
+| `app/graphql/execute.json/[...query]/route.ts` | `@/lib/content` | mock or AEM |
+| Web components | relative fetch → Next.js routes | mock or AEM |
 
 ---
 
-## 4. Próximos Pasos (siguiente sesión)
+## 3. Running the Project
 
-### Con licencia AEM (flujo completo)
-
-1. **Descargar AEM SDK JAR** desde [experience.adobe.com/downloads](https://experience.adobe.com/downloads)
-   ```bash
-   mkdir -p ~/aem-sdk/author
-   cp ~/Downloads/aem-sdk-quickstart-*.jar ~/aem-sdk/author/aem-author-p4502.jar
-   ```
-
-2. **Iniciar AEM Author**
-   ```bash
-   cd ~/aem-sdk/author
-   java -jar aem-author-p4502.jar -r author,localDev -p 4502
-   # Esperar ~5 min hasta http://localhost:4502
-   ```
-
-3. **Desplegar proyecto Maven**
-   ```bash
-   cd ~/workspace/aem/aem-headless-demo
-   mvn -P autoInstallPackage clean install -D aem.host=localhost -D aem.port=4502
-   ```
-
-4. **Crear Content Fragment Model** en AEM Author UI  
-   `Tools > Assets > Content Fragment Models > aem-headless-demo`  
-   Campos: `title` (Single-line), `body` (Multi-line/Rich text), `author` (Single-line), `publishDate` (Date)
-
-5. **Crear Content Fragments de muestra**  
-   `Assets > Files > aem-headless-demo` → crear 2-3 artículos
-
-6. **Persistir queries GraphQL** en GraphiQL (`http://localhost:4502/.../explorer`):
-   - `all-articles` → lista todos los artículos
-   - `article-by-path` → por variable `_path`
-
-7. **Verificar stack completo**
-   ```bash
-   cd ~/workspace/aem/nextjs-app && npm run dev
-   # Visitar http://localhost:3000
-   ```
-
-### Sin licencia AEM (desarrollo local con mock)
-
-1. Crear un servidor mock GraphQL (e.g., con `json-server` o `msw`)
-2. Configurar `.env.local`:
-   ```
-   NEXT_PUBLIC_AEM_HOST=http://localhost:4000
-   NEXT_PUBLIC_AEM_GRAPHQL_ENDPOINT=/graphql
-   ```
-
-### Mejoras pendientes
-
-- [ ] Subir `dist-wc/web-components.js` a un CDN real (CloudFront, Cloudflare, etc.) y actualizar `data-wc-cdn` en el loader HTL
-- [ ] Configurar CI/CD: build automático de web components en cada push
-- [ ] Añadir autenticación por token (Bearer) en los Web Components para publish
-- [ ] Añadir soporte i18n en los Web Components (`lang` attribute)
-- [ ] Tests unitarios para los Custom Elements
-
----
-
-## Comandos Rápidos
+No external services required. Everything runs with a single command:
 
 ```bash
-# Activar Node correcto
+cd ~/workspace/aem/nextjs-app
 nvm use 22
-
-# Dev server Next.js
-cd ~/workspace/aem/nextjs-app && npm run dev
-
-# Build Web Components (CDN bundle)
-npm run build:wc   # → dist-wc/web-components.js
-
-# Build Static Export (full app en CDN)
-npm run build:cdn  # → out/
-
-# Deploy AEM (requiere AEM Author en :4502)
-cd ~/workspace/aem/aem-headless-demo
-mvn -P autoInstallPackage clean install -D aem.host=localhost -D aem.port=4502
+npm install        # only needed once
+npm run dev        # → http://localhost:3000
 ```
 
-## Uso en una página AEM existente
+The dev server serves both the Next.js app pages and the mock API routes. All content comes from the built-in mock provider.
 
-```html
-<!-- 1. Incluir ClientLib (en HTL de la página) -->
-<sly data-sly-use.clientLib="/libs/granite/sightly/templates/clientlib.html"/>
-<div data-sly-call="${clientLib.js @ categories='aem-headless-demo.headless-wc'}"></div>
+---
 
-<!-- El script del ClientLib leerá data-wc-cdn e inyectará el bundle -->
-<!-- Asegurarse de que el script tag del ClientLib tiene data-wc-cdn configurado -->
+## 4. Environment Variables
 
-<!-- 2. Usar los Custom Elements -->
-<aem-headless-app
-  aem-host="https://your-aem-publish-host"
-  graphql-endpoint="/content/_cq_graphql/aem-headless-demo/endpoint.gql">
-</aem-headless-app>
+### `.env.local` (default — mock mode)
 
-<!-- O componentes individuales -->
-<aem-article-list
-  aem-host="https://your-aem-publish-host"
-  graphql-endpoint="/content/_cq_graphql/aem-headless-demo/endpoint.gql">
-</aem-article-list>
+```env
+CONTENT_PROVIDER=mock
 ```
+
+### AEM mode (when reconnecting to a live AEM instance)
+
+```env
+CONTENT_PROVIDER=aem
+
+# Required when CONTENT_PROVIDER=aem
+NEXT_PUBLIC_AEM_HOST=https://your-aem-publish-host
+NEXT_PUBLIC_AEM_GRAPHQL_ENDPOINT=/content/_cq_graphql/aem-headless-demo/endpoint.gql
+AEM_BASIC_AUTH=admin:admin        # server-side only — never exposed to client
+NEXT_PUBLIC_CDN_URL=              # optional CDN base URL for static asset prefix
+```
+
+---
+
+## 5. Build Scripts
+
+| Script | Purpose |
+|--------|---------|
+| `npm run dev` | Next.js dev server on :3000 (mock content, no AEM needed) |
+| `npm run build` | Standard Next.js SSR build |
+| `npm run build:cdn` | Static export (`out/`) — requires `BUILD_TARGET=cdn` |
+| `npm run build:wc` | Vite IIFE bundle → `dist-wc/web-components.js` |
+| `npm run dev:wc` | Vite watch mode for web components |
+
+---
+
+## 6. Custom Elements
+
+| Element | Observed attributes | Description |
+|---------|---------------------|-------------|
+| `<aem-headless-app>` | `aem-host`, `graphql-endpoint`, `base-path` | Full app with hash router |
+| `<aem-article-list>` | `aem-host`, `graphql-endpoint` | Article list |
+| `<aem-article-detail>` | `aem-host`, `graphql-endpoint`, `path` | Article detail |
+
+**Standalone (no AEM):** omit `aem-host` (defaults to `""`) so web components fetch from the Next.js mock routes.
+
+**With AEM:** set `aem-host` and `graphql-endpoint` to point at a live AEM Publish instance.
+
+---
+
+## 7. Reconnecting to AEM
+
+The `src/lib/aem/` adapter is fully preserved and wired into the content provider. To switch from mock to live AEM:
+
+1. Update `.env.local`:
+   ```env
+   CONTENT_PROVIDER=aem
+   NEXT_PUBLIC_AEM_HOST=https://your-aem-publish-host
+   NEXT_PUBLIC_AEM_GRAPHQL_ENDPOINT=/content/_cq_graphql/aem-headless-demo/endpoint.gql
+   AEM_BASIC_AUTH=admin:admin
+   ```
+
+2. Ensure the following persisted queries exist in AEM GraphiQL:
+   - `all-articles` — returns all article Content Fragments
+   - `article-by-path` — accepts `_path` variable
+
+3. Restart the dev server — no code changes required.
+
+---
+
+## 8. Technical Decisions
+
+### Node.js & Vite
+- **Node 22** (`.nvmrc = "22"`): required by Vite 8 + rolldown native bindings (`^20.19.0 || >=22.12.0`). Always run `nvm use 22` before `npm install`.
+- **Vite 8**: uses rolldown (Rust-based bundler). Web component build: ~860ms.
+- `src/web-components/` is excluded from `tsconfig.json` (uses `*.css?inline`, Vite-only syntax). It has its own `tsconfig.wc.json`.
+
+### Web Components & Shadow DOM
+- Tailwind 4 is imported as `styles.css?inline` (Vite) and injected as a `<style>` tag into the Shadow DOM — styles are fully isolated from the host page.
+- IIFE bundle format — no module loader needed; a single `<script>` tag is sufficient.
+- Hash-based routing in `AppElement` (`#/articles/path`) avoids conflicts with AEM page routing.
+
+### Next.js Static Export (CDN mode)
+- Activated by `BUILD_TARGET=cdn next build` → `output: 'export'` in `next.config.ts`.
+- `[slug]/page.tsx` (server component, exports `generateStaticParams`) + `ArticlePageClient.tsx` (`"use client"`, fetches in `useEffect`) — required because `generateStaticParams` cannot live in a client component.
+- Turbopack rejects `generateStaticParams() { return [] }` — a placeholder `[{ slug: "_" }]` is returned instead.
+
+### AEM Maven Project (historical reference)
+The `aem-headless-demo/` Maven project has been removed from the filesystem. Key facts preserved for future reference:
+- Used AEM Cloud archetype 50 with `includeGraphQL=y`
+- Pin `maven-archetype-plugin` to **3.2.1** if regenerating — 3.4.1+ fails on binary GIF assets
+- OSGi CORS config must be duplicated in both `config.author/` and `config.publish/`
+- Deploy command: `mvn -P autoInstallPackage clean install -D aem.host=localhost -D aem.port=4502`
+
+---
+
+## 9. Pending Improvements
+
+- [ ] Upload `dist-wc/web-components.js` to a real CDN (CloudFront, Cloudflare) and update `data-wc-cdn` in the HTL loader
+- [ ] CI/CD: auto-build web components on push
+- [ ] Bearer token auth support in web components for AEM Publish
+- [ ] i18n support in web components (`lang` attribute)
+- [ ] Unit tests for Custom Elements
