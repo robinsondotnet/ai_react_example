@@ -233,7 +233,53 @@ The `aem-headless-demo/` Maven project has been removed from the filesystem. Key
 
 ---
 
-## 9. Pending Improvements
+## 9. WordPress Local Environment
+
+A Docker-based WordPress environment for testing web components outside of Next.js.
+
+### Stack
+- **WordPress 6** (Apache) on port **8080**
+- **MySQL 8** with persistent Docker volume (bind-mounted to `wordpress/db_data/`)
+- Both managed via `wordpress/docker-compose.yml`
+
+### Architecture: Microfrontend Shell
+WordPress is the **primary frontend shell** — it controls page layout, header, footer, and navigation. Web components are embedded as **microfrontend islands** within WordPress pages.
+
+### Plugins (mu-plugins, auto-loaded)
+| Plugin | Purpose |
+|--------|---------|
+| `mfe-loader.php` | Microfrontend registry, conditional script loading, `[mfe]` shortcode, Gutenberg block |
+| `aem-article-cpt.php` | Article CPT mirroring AEM Content Fragment Model |
+| `aem-rest-api.php` | `/wp-json/aem/v1/articles` REST API + AEM-compat `/graphql/execute.json/...` aliases |
+| `aem-seed-content.php` | One-click demo content seeder |
+| `aem-web-components.php` | Legacy shortcodes (superseded by mfe-loader) |
+
+### Theme
+`wordpress/themes/aem-starter/` — minimal shell theme with header, footer, nav, Tailwind CDN, and page templates (default, full-width).
+
+### Content Provider Modes
+The Next.js app supports three content backends via `CONTENT_PROVIDER` env var:
+| Mode | Value | Backend |
+|------|-------|---------|
+| Mock | `mock` (default) | In-memory data |
+| WordPress | `wordpress` | WP REST API at `WORDPRESS_API_URL` |
+| AEM | `aem` | AEM GraphQL persisted queries |
+
+### Running
+```bash
+colima start                           # boot Docker VM
+cd wordpress && docker compose up -d   # start WordPress (primary frontend)
+# Optional: cd nextjs-app && npm run dev  # standalone dev/preview
+```
+
+### Adding New Microfrontends
+See `wordpress/MICROFRONTEND_GUIDE.md` — build IIFE bundle → drop in `mfe-bundles/` → register in admin → use in any page.
+
+See `wordpress/README.md` for full setup instructions.
+
+---
+
+## 10. Pending Improvements
 
 - [ ] Upload `dist-wc/web-components.js` to a real CDN (CloudFront, Cloudflare) and update `data-wc-cdn` in the HTL loader
 - [ ] CI/CD: auto-build web components on push

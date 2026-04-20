@@ -88,3 +88,7 @@ logs/
 # ── Test & Coverage output ───────────────────────────────────
 coverage/
 reports/
+
+# ── WordPress (Docker volumes) ───────────────────────────────
+wordpress/db_data/
+wordpress/wp_data/

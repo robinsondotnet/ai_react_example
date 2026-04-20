@@ -13,9 +13,10 @@ export default defineConfig({
     },
   },
   define: {
-    // Specific replacements first, then catch-all for any other process.env.*
     "process.env.NODE_ENV": JSON.stringify("production"),
     "process.env": "{}",
+    // Shim the bare `process` global so references like process.emit don't throw
+    "process": JSON.stringify({ env: { NODE_ENV: "production" } }),
   },
   build: {
     lib: {
